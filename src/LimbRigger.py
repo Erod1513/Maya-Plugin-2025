@@ -1,56 +1,57 @@
 from PySide2.QtGui import QColor
 from PySide2.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QSlider, QVBoxLayout, QWidget  #here we're just importing / downloading what we need to make certain funtions witin our code work properly
-from PySide2.QtCore import Qt, Signal      # this is imports a window type which would be the window flags
+from PySide2.QtCore import Qt, Signal      
 from maya.OpenMaya import MVector
 import maya.OpenMayaUI as omui
 import maya.mel as mel
-import shiboken2    # This allows to cast the level pointer into python pipeline so we can use it (pointers being memory addresses)
+import shiboken2   
 
-def GetMayaMainWindow()->QMainWindow:        #this provides the framework for building the main application window lines 6 - 9
-    mainWindow = omui.MQtUtil.mainWindow()          # this will retrive the main window from Maya
+def GetMayaMainWindow()->QMainWindow:       
+    mainWindow = omui.MQtUtil.mainWindow()         
     return shiboken2.wrapInstance(int(mainWindow), QMainWindow)
 
-def DeleteWidgetWithName(name): #this is an incur funcution
-    for widget in GetMayaMainWindow().findChildren(QWidget, name): #this helps delete widget with the name, so for each weighted inside of the SMA window that have the name assigned and will be deleted later
-        widget.deleteLater()  # this letter means that the window will get destroyed when things are ggeting cleared up, so its not being deleted imm editely but will be marked to be trashed that would need to be collected
+def DeleteWidgetWithName(name): 
+    for widget in GetMayaMainWindow().findChildren(QWidget, name):
+        widget.deleteLater()  
 
-class MayaWindow(QWidget):     # when we use the QWidget instance for this class, it help set its title and geometry and then displays it
+class MayaWindow(QWidget):     
     def __init__(self):
-        super().__init__(parent = GetMayaMainWindow()) #the maya window being the super construtor is the parent and this particular widget get parented to the main maya window
-        DeleteWidgetWithName(self.GetWidgetUniqueName()) #Deletes widget with name name self. getwindow with uniquw name with whatever been there gets remove first and creates a new one with the same name
-        self.setWindowFlags(Qt.WindowType.Window) # this is stating that this is a window and not any other widget that is in a random spot, and doesnt go away when minimizing and maximizing Maya
+        super().__init__(parent = GetMayaMainWindow()) 
+        DeleteWidgetWithName(self.GetWidgetUniqueName()) 
+        self.setWindowFlags(Qt.WindowType.Window) 
         self.setObjectName(self.GetWidgetUniqueName())
 
-    def GetWidgetUniqueName(self): #this just helps set the widget to any unique name we give it
+    def GetWidgetUniqueName(self): 
         return "frugbkejrbgkjdbfg"
     
 
 import maya.cmds as mc
 
-class LimbRigger: # allows all these the inital values of the three joints of the limb and also creates a defualt size for the controllers within this class and its constuctor
+class LimbRigger:
     def __init__(self):
         self.root = ""
         self.mid = ""
         self.end = ""
         self.controllerSize = 5
-        self.controllerColor = QColor()
+        self.controllerColor = [0,0,0]
+        self.CreatedController = []
 
     def FindJointsBasedOnSelection(self):
-        try: # this allows a fraction to be initialize the three values under and will become the top, middle, and end joints
-            self.root = mc.ls(sl = True, type = "joint") [0] # the first selection of the rig so if there is a occuring error it will let the user know
+        try: 
+            self.root = mc.ls(sl = True, type = "joint") [0] 
             self.mid = mc.listRelatives(self.root, c = True, type = "joint")[0]
             self.end = mc.listRelatives(self.mid, c = True, type = "joint")[0]
-        except Exception as e: # captures the exception here and raises it back
+        except Exception as e: 
             raise Exception ("wrong selection, please select the first joint o fthe limb")
 
-    def CreateFKControllerForJoint(self,jntName): #break down sections into smaller task which in turn creates the FkCtrls and joints with name functions
-        ctrlName = "ac_l_fk_" + jntName # creates a name this joint
-        ctrlGrpName = ctrlName + "_grp" # ctreate a name for this joint group
-        mc.circle(name = ctrlName, radius = self.controllerSize, normal = (1,0,0)) # this is the radius of the cicle which would equal to the controller size we created
-        mc.group(ctrlName, n=ctrlGrpName) # is establishing the group name
-        mc.matchTransform(ctrlGrpName, jntName) # to match transformation with the controls group based on the name
-        mc.orientConstraint(ctrlName, jntName) # this creates  the constraint for the joints which will use the names we had set up
-        return ctrlName, ctrlGrpName #will return the control name and the control group name
+    def CreateFKControllerForJoint(self,jntName): 
+        ctrlName = "ac_l_fk_" + jntName 
+        ctrlGrpName = ctrlName + "_grp" 
+        mc.circle(name = ctrlName, radius = self.controllerSize, normal = (1,0,0)) 
+        mc.group(ctrlName, n=ctrlGrpName) 
+        mc.matchTransform(ctrlGrpName, jntName) 
+        mc.orientConstraint(ctrlName, jntName)
+        return ctrlName, ctrlGrpName 
     
     def CreateBoxController(self, name):
         mel.eval(f"curve -n {name} -d 1 -p -0.5 0.5 -0.5 -p 0.5 0.5 -0.5 -p 0.5 -0.5 -0.5 -p -0.5 -0.5 -0.5 -p -0.5 0.5 -0.5 -p -0.5 0.5 0.5 -p 0.5 0.5 0.5 -p 0.5 0.5 -0.5 -p 0.5 -0.5 -0.5 -p 0.5 -0.5 0.5 -p 0.5 0.5 0.5 -p -0.5 0.5 0.5 -p -0.5 -0.5 0.5 -p 0.5 -0.5 0.5 -p -0.5 -0.5 0.5 -p -0.5 -0.5 -0.5 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 ;")
@@ -58,13 +59,22 @@ class LimbRigger: # allows all these the inital values of the three joints of th
         mc.makeIdentity(name, apply = True)
         grpName = name + "_grp"
         mc.group(name, n = grpName)
+        self.CreatedController.append(name)
         return name, grpName
     
     def CreatePlusController(self,name):
         mel.eval(f"curve -n {name} -d 1 -p 3.998356 0 3.001427 -p 3.998356 0 3.001427 -p 3.998356 0 3.001427 -p 3.998356 0 3.001427 -p 5.000584 0 3.007831 -p 5.000584 0 3.007831 -p 5.000584 0 3.007831 -p 5.001627 0 4.014998 -p 6.027885 0 4.001211 -p 6.012511 0 4.997947 -p 5.012602 0 5.034713 -p 5.02592 0 5.999881 -p 3.989075 0 6.000681 -p 3.994619 0 5.003642 -p 2.996706 0 5.029282 -p 3.009883 0 3.989389 -p 3.988429 0 4.00692 -p 3.998356 0 3.001427 -p 5.000584 0 3.007831 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 ;")
         grpName = name + "_grp"
         mc.group(name, n = grpName)
+        self.CreatedController.append(name)
         return name, grpName
+    
+    def ChangeControllerColors(self, rgbcolor):
+        for ctrl in self.CreatedController:
+            if mc.objExists(ctrl):
+                mc.setAttr(ctrl + ".overrideEnabled", 1)
+                mc.setAttr(ctrl+ ".overrideRGBcolors", 1)
+                mc.setAttr(ctrl+".overrideColorRGB", rgbcolor[1], rgbcolor[2], type="double3")
     
     def GetObjectLocation(self, objectName):
         x,y,z = mc.xform(objectName, q = True, ws = True, t = True)
@@ -75,13 +85,13 @@ class LimbRigger: # allows all these the inital values of the three joints of th
         print(f"<{vector.x}, {vector.y}, {vector.z}>")
         
 
-    def RigLimb(self): # this creates the controller for the three joints, roots, middle, and end. recalling two values the controller and group controller
+    def RigLimb(self): 
         rootCtrl, rootCtrlGrp = self.CreateFKControllerForJoint(self.root)
         midCtrl, midCtrlGrp = self.CreateFKControllerForJoint(self.mid)
         endCtrl, endCtrlGrp = self.CreateFKControllerForJoint(self.end)
 
-        mc.parent(midCtrlGrp, rootCtrl) # this line is parrenting the groups through a established heirechy
-        mc.parent(endCtrlGrp, midCtrl) # this line parents the end CTRL group and CTRL mid together and linking them to the end controller to the mid controller
+        mc.parent(midCtrlGrp, rootCtrl) 
+        mc.parent(endCtrlGrp, midCtrl) 
 
         ikEndCtrl = "ac_ik_" + self.end
         ikEndCtrl, ikEndCtrlGrp = self.CreateBoxController(ikEndCtrl)
@@ -128,9 +138,10 @@ class LimbRigger: # allows all these the inital values of the three joints of th
         topGrpName = f"{self.root}_rig_grp"
         mc.group({rootCtrlGrp,ikEndCtrlGrp,poleVectorCtrlGrp,ikfkBlendCtrlGrp}, n= topGrpName)
         mc.parent(ikHandleName,ikEndCtrl)
- 
+
         mc.setAttr(topGrpName+".overrideEnabled", 1)
         mc.setAttr(topGrpName+".overrideRGBColors",1)
+        mc.setAttr(topGrpName+".overrideRGB", self.controllerColor[0], self.controllerColor[1], self.controllerColor[2], type="double3")
  
 
 class ColorPicker(QWidget):
@@ -138,6 +149,7 @@ class ColorPicker(QWidget):
     def __init__(self):
         super().__init__()
         self.masterLayout = QVBoxLayout()
+        self.color = QColor()
         self.setLayout(self.masterLayout)
         self.pickColorBtn = QPushButton()
         self.pickColorBtn.setStyleSheet(f"background-color:black")
@@ -149,28 +161,28 @@ class ColorPicker(QWidget):
         self.pickColorBtn.setStyleSheet(f"background-color:{self.color.name()}")
         self.colorChanged.emit(self.color)
 
+            
 
-
-class LimbRiggerWidget(MayaWindow): #this is going to be based on the window while using the same constructor but a diffrent parent
+class LimbRiggerWidget(MayaWindow): 
     def __init__(self):
         super().__init__()
         self.rigger = LimbRigger()
         self.setWindowTitle("limb Rigger")
 
         self.masterLayout = QVBoxLayout()
-        self.setLayout(self.masterLayout) # this gives us a layout to work with all dependent of the visual elements you add in will be laid out here
+        self.setLayout(self.masterLayout) 
 
 
-        toolTipLabel = QLabel("select the first joint of the limb, and press the auto find button") # this is the first joint of the limb
-        self.masterLayout.addWidget(toolTipLabel) # this makes us a lable that will be added to the layout
+        toolTipLabel = QLabel("select the first joint of the limb, and press the auto find button") 
+        self.masterLayout.addWidget(toolTipLabel) 
 
 
-        self.jntsListLineEdit = QLineEdit() # this is just a text field
-        self.masterLayout.addWidget(self.jntsListLineEdit) # this allows our text field to be edited / typed into
-        self.jntsListLineEdit.setEnabled(False) #set the enabled to the files so here it has been set to not enabled
+        self.jntsListLineEdit = QLineEdit() 
+        self.masterLayout.addWidget(self.jntsListLineEdit) 
+        self.jntsListLineEdit.setEnabled(False) 
 
-        autoFindJntBtn = QPushButton() # Helps to create the button
-        autoFindJntBtn.clicked.connect(self.AutoFindJntBtnClicked) #This says when button is found it can be clicked
+        autoFindJntBtn = QPushButton("Auto Find") 
+        autoFindJntBtn.clicked.connect(self.AutoFindJntBtnClicked) 
         self.masterLayout.addWidget(autoFindJntBtn) 
 
         ctrlSizeSlider = QSlider()
@@ -180,26 +192,30 @@ class LimbRiggerWidget(MayaWindow): #this is going to be based on the window whi
         self.ctrlSizeLable = QLabel(f"{self.rigger.controllerSize}")
         ctrlSizeSlider.valueChanged.connect(self.CtrlSizeSliderChanged)
 
-        colorPicker = ColorPicker()
-        colorPicker.colorChanged.connect(self.ColorPickerChanged)
-        self.masterLayout.addWidget(colorPicker)
-
-
         ctrlSizeLayout = QHBoxLayout()
         ctrlSizeLayout.addWidget(ctrlSizeSlider)
         ctrlSizeLayout.addWidget(self.ctrlSizeLable)
         self.masterLayout.addLayout(ctrlSizeLayout)
 
-        rigLimbBtn = QPushButton("rig limb") # a button that instance and initaites the rigging proccess for the limb
+        colorPicker = ColorPicker()
+        colorPicker.colorChanged.connect(self.ColorPickerChanged)
+        self.masterLayout.addWidget(colorPicker)
+
+        rigLimbBtn = QPushButton("Rig limb") 
         rigLimbBtn.clicked.connect(lambda: self.rigger.RigLimb())
         self.masterLayout.addWidget(rigLimbBtn)
- 
-   
+        
+        pickColorBtn = QPushButton("Color Change") # this will be changed as a proper color change color for the joints after the functions has been defined
+        pickColorBtn.clicked.connect(self.ChangeControllerColorChange) # but for now it works the same as the rig limb button
+        self.masterLayout.addWidget(pickColorBtn)
 
     def ColorPickerChanged(self, newColor: QColor):
         self.rigger.controllerColor[0] = newColor.redF()
         self.rigger.controllerColor[1] = newColor.greenF()
         self.rigger.controllerColor[2] = newColor.blueF()
+
+    def ChangeControllerColorChange(self):
+        self.rigger.ChangeControllerColors(self.rigger.controllerColor)
 
     def CtrlSizeSliderChanged(self, newValue):
         self.ctrlSizeLable.setText(f"{newValue}")
@@ -211,6 +227,8 @@ class LimbRiggerWidget(MayaWindow): #this is going to be based on the window whi
             self.jntsListLineEdit.setText(f"{self.rigger.root},{self.rigger.mid},{self.rigger.end}") # this list and edits the joints text diplays
         except Exception as e:
             QMessageBox.critical(self, "Error", f"{e}") # Queue messege box that displays what errors that may have occured.
+
+   
 
 
 limbRiggerWidget = LimbRiggerWidget() 
