@@ -13,7 +13,7 @@ this plugin rigs any 3 joint limb with ik and fk and ikfk blend
 * Assign a chosen color
 
 
-   ## 1.2. Proxy Generator 
+ ## 1.2. Proxy Generator 
 
 <img src= "./assets/Proxy Generator.Png" width = 400>
 
